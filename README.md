@@ -102,17 +102,22 @@ were independent look-only runs. Their data is backed up in `Geoguessr/meta-map-
 
 Every meta has a name, a one-sentence note on what to look for, a kind (`place`, `capture` or
 `mixed`) and a confidence, in `data/<level>/labels.json`. The site falls back to countries plus
-urbanity for any meta without one. Names were made top-down (broad, then each finer level with
-its parent's name as context) by vision labellers reading contact sheets, using these steps:
+urbanity for any meta without one. Names were made top-down (region, then each finer level with
+its parent's name as context) by vision labellers reading contact sheets. The current four levels
+were named on 2026-11-11: regions, sub-regions and scenes fresh, looks kept from the earlier pass
+(their ids did not change) except the 43 small looks, which were rechecked. Labels from before
+that pass are kept in `<work>/labels-before-pass/`. The steps:
 
 1. `pipeline/text_space.py <work>`: every pano's C-RADIO summary through the official SigLIP2-g
    adaptor, the same transform as the Lodestar text search (`<work>/siglip2m.f16.npy`, 6 GB,
    about 3 minutes on this Mac).
-2. `pipeline/describe.py <work> . <gamma:level>...`: scores the traits in
+2. `META_MIN=30 pipeline/describe.py <work> . R40:region S141:subregion SCN:scene 300s:micro`: scores the traits in
    `pipeline/vocabulary.json` for every meta, relative to its parent and to the corpus, in
    per-pano standard deviations (`<work>/describe.json`). These are hints only.
-3. `pipeline/sheets.py <work> . <levels>`: contact sheets, eight metas per sheet and six typical
-   panos per meta, with siblings (same parent) kept together and separated by yellow lines.
+3. `pipeline/sheets.py <work> . <levels>`: contact sheets with siblings (same parent) kept together
+   and separated by yellow lines. Regions and sub-regions get two rows per meta (six typical photos,
+   then six Range photos in blue frames, from `spread.json`), scenes one row of three typical and
+   three Range photos, looks six typical photos; `ONLY=<a>-<b>` limits a level to an id range.
 4. `pipeline/label_batches.py <work> . <level> <sheets per batch>`: one brief per labeller with
    the rules, the sheets, and per-meta countries, urbanity, parent name and trait hints.
 5. `pipeline/merge_labels.py <work> . <level>`: merges labeller output into `labels.json` and
