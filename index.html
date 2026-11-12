@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meta Map</title>
+  <link rel="preconnect" href="https://streetviewpixels-pa.clients6.google.com" crossorigin>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="styles.css?v=84">
+</head>
+<body>
+  <div id="map"></div>
+  <div class="inset" id="inset" hidden>
+    <div id="smap"></div>
+    <div class="inset-bar">
+      <span class="inset-title" id="inset-title">Space</span>
+      <button type="button" id="inset-swap" title="Swap: make this the main view (S / M)">Swap</button>
+      <button type="button" id="inset-size" title="Larger or smaller inset">⤢</button>
+    </div>
+  </div>
+
+  <header class="topbar">
+    <h1><button type="button" id="home-link" title="Home">Meta Map</button></h1>
+    <nav class="segmented-control" id="view-control" aria-label="Section">
+      <button type="button" data-view="explore" aria-pressed="false" title="Every look, each with its own page (E)">Explore</button>
+      <button type="button" data-view="map" aria-pressed="true" title="Every location, colored by its look; World or Space on the map (M / S)">Map</button>
+      <button type="button" data-view="practice" aria-pressed="false" title="Learn to recognize the looks (T)">Practice</button>
+    </nav>
+    <div class="level-pick">
+      <button type="button" class="level-button" id="level-button" aria-haspopup="true" aria-expanded="false" aria-controls="level-control" title="How fine the groups are (keys 1-4)">
+        <small>Level</small><span id="level-name">Regional</span><i aria-hidden="true">▾</i>
+      </button>
+      <div class="level-menu" id="level-control" role="menu" hidden></div>
+    </div>
+    <button type="button" class="toggle" id="tools-toggle" aria-expanded="false" aria-controls="tools-menu" title="Extra views and options">Tools</button>
+  </header>
+
+  <div class="train-stage" id="train-stage" hidden>
+    <div class="train-q" id="train-q"></div>
+    <button type="button" class="train-stage-toggle" id="train-stage-toggle"></button>
+  </div>
+  <button type="button" class="panel-toggle" id="panel-toggle" aria-controls="panel" aria-expanded="true">›</button>
+  <aside class="panel" id="panel">
+    <section id="train-view" hidden>
+      <div class="panel-head">
+        <h2>Train <span class="train-score" id="train-score"></span></h2>
+        <button type="button" class="toggle" id="train-area" aria-pressed="false" title="Only metas in the map view you started training from (A)">This area</button>
+        <div class="segmented-control small" id="train-mode" role="group" aria-label="Training mode" title="G cycles the mode">
+          <button type="button" data-mode="pick" title="Pick the right row of pictures">Pick</button>
+          <button type="button" data-mode="place" title="Click where this look lives on the map">Place</button>
+          <button type="button" data-mode="both" title="Pick the row, then place it">Both</button>
+        </div>
+        <button type="button" id="train-exit" title="Stop training (Esc)">Exit</button>
+      </div>
+      <div class="meta-scroll train-scroll">
+        <div class="train-progress" id="train-progress"></div>
+        <div class="train-q-panel" id="train-q-panel" hidden></div>
+        <div class="train-after" id="train-after" hidden></div>
+        <div class="section-label" id="train-prompt"></div>
+        <div class="train-options" id="train-options"></div>
+      </div>
+    </section>
+
+    <section id="compare-view" hidden>
+      <div class="panel-head">
+        <h2>Compare</h2>
+        <button type="button" id="compare-back" title="Back to the first meta (Esc)">Back</button>
+      </div>
+      <div class="versus" id="versus"></div>
+      <div class="meta-scroll">
+        <div class="meet" id="meet"></div>
+        <div class="section-label">At the border</div>
+        <div class="pairs" id="pairs"></div>
+        <div class="section-label">Typical</div>
+        <div class="columns" id="columns"></div>
+      </div>
+    </section>
+
+  </aside>
+
+  <div class="viewer" id="viewer" hidden>
+    <figure>
+      <img id="viewer-img" alt="">
+      <button type="button" class="nav prev" id="viewer-prev" aria-label="Previous">&lsaquo;</button>
+      <button type="button" class="nav next" id="viewer-next" aria-label="Next">&rsaquo;</button>
+      <div class="locator" id="viewer-map"></div>
+      <div class="segmented-control small turn" id="viewer-turn" role="group" aria-label="View direction">
+        <button type="button" data-turn="0" aria-pressed="true" title="Up arrow cycles">Ahead</button>
+        <button type="button" data-turn="1" aria-pressed="false">Right</button>
+        <button type="button" data-turn="2" aria-pressed="false">Behind</button>
+        <button type="button" data-turn="3" aria-pressed="false">Left</button>
+      </div>
+      <figcaption>
+        <span class="swatch" id="viewer-swatch"></span>
+        <strong id="viewer-name"></strong>
+        <span id="viewer-where"></span>
+        <span class="replaced" id="viewer-note" hidden></span>
+        <span class="count" id="viewer-count"></span>
+        <a id="viewer-link" target="_blank" rel="noopener">Street View</a>
+        <button type="button" id="viewer-close">Close</button>
+      </figcaption>
+    </figure>
+  </div>
+
+  <div class="hover-card" id="hover-card" hidden>
+    <div class="hover-slot" id="hover-slot"><img id="hover-img" alt=""></div>
+    <div class="hover-line" id="hover-line"></div>
+  </div>
+  <div class="map-card" id="map-card" hidden>
+    <div class="mc-row">
+      <button type="button" class="mc-title" id="mc-title" title="Open its full page"></button>
+      <span class="mc-where" id="mc-where"></span>
+      <button type="button" class="mc-primary" id="mc-open" title="Everything about this meta: big photos, look-alikes side by side, the numbers">Full page</button>
+      <button type="button" id="mc-practice" title="Practice recognizing it among its look-alikes">Practice</button>
+      <button type="button" class="mc-x" id="mc-close" title="Close (Esc)" aria-label="Close">×</button>
+    </div>
+    <p class="mc-note" id="mc-note"></p>
+    <div class="mc-mix" id="mc-mix" hidden></div>
+  </div>
+  <section class="explore" id="explore" hidden>
+    <div class="xp-bar">
+      <div class="xp-search">
+        <input id="xp-q" type="search" placeholder="A country or a look (Poland, red dirt, #42)" autocomplete="off" spellcheck="false">
+        <div class="xp-suggest" id="xp-suggest" hidden></div>
+      </div>
+      <button type="button" id="xp-start" title="Back to the list of countries (Esc)">Countries</button>
+    </div>
+    <div class="xp-body">
+      <div class="xp-main">
+        <div class="xp-top">
+          <div class="xp-heading"><h2 id="xp-title"></h2><p id="xp-sub"></p></div>
+          <button type="button" class="xp-up" id="xp-up" hidden></button>
+          <div class="xp-pager" id="xp-pager" hidden>
+            <button type="button" id="xp-prev" title="Previous looks (←)">‹</button><span id="xp-pages"></span><button type="button" id="xp-next" title="More looks (→)">›</button>
+          </div>
+        </div>
+        <div class="xp-picker" id="xp-picker" hidden><div class="xp-countries" id="xp-countries"></div></div>
+        <div class="xp-board" id="xp-board" hidden><div class="xp-cols" id="xp-cols"></div></div>
+      </div>
+      <div class="xp-hole" id="xp-hole"></div>
+    </div>
+  </section>
+  <section class="meta-page" id="meta-page" hidden>
+    <div class="mp-bar">
+      <button type="button" id="mp-back" title="Back to the map, with this meta selected (Esc or V)">← Back to map <kbd>Esc</kbd><kbd>V</kbd></button>
+      <h1 class="mp-title" id="mp-title"></h1>
+    </div>
+    <div class="mp-body">
+      <aside class="mp-side">
+        <div class="mp-hole" id="mp-hole"></div>
+        <div class="mp-info" id="mp-info"></div>
+      </aside>
+      <div class="mp-boardwrap">
+        <div class="mp-toolbar">
+          <div class="mp-tabs" id="mp-tabs" title="Up and down arrows switch"></div>
+          <div class="mp-pager"><button type="button" id="mp-prev" title="Previous photos (←)">‹</button><span id="mp-page"></span><button type="button" id="mp-next" title="More photos (→)">›</button></div>
+          <div class="segmented-control small" id="mp-grid" role="group" aria-label="Grid size">
+            <button type="button" data-g="2">2×2</button><button type="button" data-g="3">3×3</button><button type="button" data-g="4">4×4</button>
+          </div>
+        </div>
+        <div class="mp-board" id="mp-board"></div>
+      </div>
+    </div>
+  </section>
+  <section class="practice" id="practice" hidden>
+    <div class="pr-bar">
+      <div class="segmented-control small" id="pr-mode" role="group" aria-label="Practice mode" title="G switches">
+        <button type="button" data-mode="sort" title="Sort photos into piles of look-alikes">Sort</button>
+        <button type="button" data-mode="where" title="Guess where each photo is, then see where the photos that look most like it are">Guess</button>
+      </div>
+      <span class="pr-title" id="pr-title"></span>
+      <span class="pr-dots" id="pr-dots"></span>
+      <span class="pr-count" id="pr-count"></span>
+      <button type="button" id="pr-exit" title="Stop practicing (Esc)">Exit</button>
+    </div>
+    <div class="pr-body">
+      <div class="pr-stage" id="pr-play">
+        <div class="pr-photo" id="pr-photo">
+          <div class="segmented-control small pr-turn" id="pr-turn" role="group" aria-label="Direction" title="Left and right arrows turn">
+            <button type="button" data-t="0">Ahead</button><button type="button" data-t="90">Right</button><button type="button" data-t="180">Behind</button><button type="button" data-t="270">Left</button>
+          </div>
+          <div class="pr-feedback" id="pr-feedback"></div>
+        </div>
+        <div class="pr-strip" id="pr-strip" hidden></div>
+      </div>
+      <div class="pr-summary" id="pr-summary"></div>
+      <div class="pr-hole" id="pr-hole"><div class="pr-map-note" id="pr-map-note"></div></div>
+      <div class="pr-hint" id="pr-hint"></div>
+      <div class="pr-piles" id="pr-piles"></div>
+    </div>
+  </section>
+  <div class="tools-menu" id="tools-menu" hidden>
+    <div class="tool-row">
+      <div><b>Color</b><span>What the dot colors mean: each meta, where a pano is on Earth, or where it sits in Space.</span></div>
+      <div class="segmented-control small" id="color-mode" role="group" aria-label="Color by">
+        <button type="button" data-mode="meta" aria-pressed="true">Meta</button>
+        <button type="button" data-mode="place" aria-pressed="false">Place</button>
+        <button type="button" data-mode="look" aria-pressed="false">Look</button>
+      </div>
+    </div>
+    <div class="tool-row">
+      <div><b>Linked view</b><span>The other layout in a corner. Hover either to see the same panos in both.</span></div>
+      <button type="button" class="toggle" id="split-toggle" aria-pressed="false">Off</button>
+    </div>
+    <div class="tool-row">
+      <div><b>Names in Space</b><span>Meta names on the Space view.</span></div>
+      <button type="button" class="toggle" id="labels-toggle" aria-pressed="true">On</button>
+    </div>
+    <div class="tool-row">
+      <div><b>Distinct colors</b><span>Bordering metas in clearly different colors; off gives the raw look colors.</span></div>
+      <button type="button" class="toggle" id="scheme-toggle" aria-pressed="true">On</button>
+    </div>
+    <div class="tool-hint"><b>Shift + hover</b> enlarges a pano to fill the window, in all four directions.
+    <b>Option + hover</b> shows nine photos of the area under the cursor.
+    <b>⌘-click</b> (Ctrl-click) or middle-click any photo or dot opens it in Google Street View; so does a click while Shift is held.</div>
+    <details class="tool-keys">
+      <summary>Keyboard shortcuts</summary>
+      <p>M / S map or Space · 1-4 level · V full view of a meta (V or Esc back) · T train · / search · Esc back · P hide the panel ·
+      K color · D linked view · L names · C distinct colors · [ ] area size · B plain dots · Shift + hover enlarge · Option + hover area photos</p>
+    </details>
+  </div>
+  <canvas class="legend" id="legend" hidden></canvas>
+  <div class="home" id="home" hidden>
+    <div class="home-inner" id="home-main">
+      <div class="home-mark">META MAP</div>
+      <p class="home-sub">Learn the looks GeoGuessr locations fall into.</p>
+      <div class="home-tiles">
+        <button type="button" class="home-tile" data-go="explore"><span><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="7" width="15" height="15" rx="3.5" fill="none" stroke="currentColor" stroke-width="3.5"/><rect x="26" y="7" width="15" height="15" rx="3.5" fill="none" stroke="currentColor" stroke-width="3.5"/><rect x="7" y="26" width="15" height="15" rx="3.5" fill="none" stroke="currentColor" stroke-width="3.5"/><rect x="26" y="26" width="15" height="15" rx="3.5" fill="none" stroke="currentColor" stroke-width="3.5"/></svg></span><strong>Explore</strong><small>Every look: its photos, where it is, what it's confused with</small></button>
+        <button type="button" class="home-tile" data-go="map"><span><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="3.5"/><path d="M7 24h34M24 7c6 5 6 29 0 34M24 7c-6 5-6 29 0 34" fill="none" stroke="currentColor" stroke-width="3"/></svg></span><strong>Map</strong><small>Every location colored by its look, on the world or in Space</small></button>
+        <button type="button" class="home-tile" data-go="practice"><span><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="3.5"/><circle cx="24" cy="24" r="9.5" fill="none" stroke="currentColor" stroke-width="3.5"/><circle cx="24" cy="24" r="3" fill="currentColor"/></svg></span><strong>Practice</strong><small>Sort photos into look-alikes, or place looks on the map</small></button>
+      </div>
+      <div class="home-levels">
+        <div class="home-caps">Level</div>
+        <div class="home-chips" id="home-levels"></div>
+        <div class="home-level-hint" id="home-level-hint"></div>
+      </div>
+      <button type="button" class="home-about-link" id="home-about-open">What is this?</button>
+    </div>
+    <div class="home-inner home-about" id="home-about" hidden>
+      <div class="home-mark small">WHAT IS THIS</div>
+      <ol>
+        <li>2 million Street View locations from GeoGuessr-style coverage were compared by how they look, using a vision model.</li>
+        <li>Locations that look alike were grouped. Each group is a <b>meta</b>: a look shared by many places, like "Kenyan red-dirt tracks" or "Mongolian roof-rack car".</li>
+        <li>Four levels, each inside the one above: 40 regions (big areas that look alike), 141 sub-regions (smaller areas), 558 scenes (the kinds of road in each area: town streets, highways, rural roads, unpaved roads) and 4,272 looks (the finest detail).</li>
+        <li><b>Explore</b> a meta to see its photos, where it occurs and what it gets confused with. <b>Practice</b> to learn to recognize it from photos you have not seen.</li>
+        <li>Hold <b>Shift</b> over any photo or dot to see it in all four directions.</li>
+      </ol>
+      <button type="button" class="home-back" id="home-about-close">Back</button>
+    </div>
+  </div>
+  <div class="peek" id="peek" hidden>
+    <div class="peek-head" id="peek-head"></div>
+    <div class="peek-grid" id="peek-grid"></div>
+    <div class="peek-foot">Click to open it in Google Street View · release Shift to close</div>
+  </div>
+  <div class="sheet-card" id="sheet-card" hidden>
+    <div class="sheet-grid" id="sheet-grid"></div>
+    <div class="sheet-line" id="sheet-line"></div>
+  </div>
+  <div class="loading" id="loading">Loading</div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="app.js?v=120"></script>
+  <script src="explore.js?v=17"></script>
+  <script src="practice.js?v=23"></script>
+  <script src="metapage.js?v=7"></script>
+</body>
+</html>

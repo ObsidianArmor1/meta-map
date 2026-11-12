@@ -1,0 +1,10 @@
+# Build scripts and their outputs stay local (they hold machine-specific paths and large results).
+/pipeline/
+/posters/
+/server.log
+.DS_Store
+# Old levels, no longer listed in data/levels.json (backed up locally).
+/data/broad/
+/data/regional/
+/data/local/
+/data/fine/
